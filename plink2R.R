@@ -5,7 +5,7 @@ library(doMC)
 
 registerDoMC(cores=10)
 
-root <- "~/Data/Celiac/Celiac1/chr6"
+root <- "data"
 
 system.time({
    r1 <- read_plink(root)

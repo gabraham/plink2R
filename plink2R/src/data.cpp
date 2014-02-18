@@ -134,7 +134,8 @@ void Data::read_bed(bool impute)
 
    double* avg = new double[nsnps]; 
 
-   if(impute)
+   // impute by average
+   if(impute == IMPUTE_AVG)
    {
       for(unsigned int i = 0 ; i < nsnps ; i++)
       {
@@ -171,7 +172,8 @@ void Data::read_bed(bool impute)
          X.col(i) = tmp3;
       }
    }
-   else
+   // impute by sampling genotypes
+   else if(impute == IMPUTE_SAMPLE)
    {
       for(unsigned int i = 0 ; i < nsnps ; i++)
       {

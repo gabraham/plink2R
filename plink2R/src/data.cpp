@@ -364,7 +364,6 @@ void Data::load_snp_double(unsigned int j, double *geno)
       }
    }
    double sd = sqrt(sum2 / (ngood - 1));
-   double mean_sd = mean / sd;
 
    if(ngood == N)
    {
@@ -378,7 +377,7 @@ void Data::load_snp_double(unsigned int j, double *geno)
       {
          v = geno[i];
          if(v == PLINK_NA)
-            geno[i] = mean_sd;
+            geno[i] = 0;
          else
             geno[i] = (v - mean) / sd;
       }

@@ -21,6 +21,7 @@ Data::Data(const char* bedfile, const char* famfile, bool verbose)
 	 << " famfile: " << famfile << std::endl;
    this->Y = read_plink_pheno(famfile, 6);
    this->mask = VectorXd::Ones(N).array() == 1.0;
+   filesize = 0;
 
    //mmap_bed(bedfile);
 }
@@ -28,7 +29,8 @@ Data::Data(const char* bedfile, const char* famfile, bool verbose)
 Data::~Data()
 {
    //geno_fin.close();
-   munmap(data, filesize);
+   if(filesize > 0)
+      munmap(data, filesize);
 }
 
 /* 
@@ -352,7 +354,7 @@ void Data::load_snp_double(unsigned int j, double *geno)
    delete[] tmp2;
 
    // Compute standard dev over non-missing genotypes
-   double mean = sum / k;
+   double mean = sum / ngood;
    double sum2 = 0, v;
    for(i = N - 1 ; i != -1 ; --i)
    {

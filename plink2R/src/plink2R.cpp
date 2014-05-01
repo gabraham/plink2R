@@ -3,7 +3,6 @@
 #include "data.hpp"
 
 // [[Rcpp::depends(BH)]]
-// [[Rcpp::export]]
 SEXP read_plink(SEXP _bedfile, SEXP _famfile,
    SEXP _impute, SEXP _verbose) 
 {

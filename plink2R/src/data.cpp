@@ -21,14 +21,10 @@ Data::Data(const char* bedfile, const char* famfile, bool verbose)
 	 << " famfile: " << famfile << std::endl;
    this->Y = read_plink_pheno(famfile, 6);
    this->mask = VectorXd::Ones(N).array() == 1.0;
-
-   //mmap_bed(bedfile);
 }
 
 Data::~Data()
 {
-   //geno_fin.close();
-   munmap(data, filesize);
 }
 
 /* 
@@ -270,44 +266,6 @@ std::string Data::tolower(const std::string& v)
    return r;
 }
 
-void Data::mmap_bed(const char *filename)
-{
-  // boost::iostreams::mapped_file_params params;
-   //params.path = std::string(filename, strlen(filename));
-   //params.offset = 0;
-   //params.length = -1;
-   //geno_fin = boost::iostreams::mapped_file_source(params);
-
-   geno_fin_fd = open(filename, O_RDONLY);
-   if(geno_fin_fd == -1)
-      throw std::runtime_error(
-	 "can't open file for reading");
-
-   struct stat64 stat_buf;
-   int rc = stat64(filename, &stat_buf);
-   filesize = stat_buf.st_size;
-
-   if(verbose)
-      std::cout << "filesize: " << filesize << std::endl;
-   len = filesize - PLINK_OFFSET;
-   data = (unsigned char*)mmap(NULL, filesize, PROT_READ, MAP_SHARED, geno_fin_fd, 0);
-
-   if(N == 0)
-      throw std::runtime_error(
-	 "haven't read a FAM/PHENO file so don't know what sample size is");
-
-   if(verbose)
-      std::cout << filename << " len: " << len << " bytes" << std::endl;
-   np = (unsigned int)ceil((double)N / PACK_DENSITY);
-   nsnps = (unsigned int)(len / np);
-
-   if(verbose)
-   {
-      std::cout << filename << " np: " << np << std::endl;
-      std::cout << filename << " nsnps: " << nsnps << std::endl;
-   }
-}
-
 // Assumes data is SNP-major ordered
 VectorXd Data::get_snp(unsigned int j)
 {
@@ -356,7 +314,7 @@ void Data::load_snp_double(unsigned int j, double *geno)
    // Compute standard dev over non-missing genotypes
    double mean = sum / k;
    double sum2 = 0, v;
-   for(i = N - 1 ; i != -1 ; --i)
+   for(i = 0 ; i < N ; i++)
    {
       v = geno[i];
       if(v != PLINK_NA)
@@ -370,13 +328,13 @@ void Data::load_snp_double(unsigned int j, double *geno)
 
    if(ngood == N)
    {
-      for(i = N - 1 ; i != -1 ; --i)
+      for(i = 0 ; i < N ; i++)
 	 geno[i] = (geno[i] - mean) / sd;
    }
    else
    {
       // Impute missing genotypes and standardise to zero-mean unit-variance
-      for(i = N - 1 ; i != -1 ; --i)
+      for(i = 0 ; i < N ; i++)
       {
          v = geno[i];
          if(v == PLINK_NA)

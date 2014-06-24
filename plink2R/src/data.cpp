@@ -131,13 +131,33 @@ void Data::read_bed(int impute)
 
    double* avg = new double[nsnps]; 
 
+   // The Rcpp code in read_plink will take care of converting PLINK_NA to
+   // NA_REAL
    if(impute == IMPUTE_NONE)
    {
+      if(verbose)
+	 std::cout << "impute: IMPUTE_NONE" << std::endl;
+   
+      for(unsigned int j = 0 ; j < nsnps ; j++)
+      {
+         // read raw genotypes
+         in.read((char*)tmp, sizeof(char) * np);
+
+         // decode the genotypes
+         decode_plink(tmp2, tmp, np);
+
+         for(unsigned int i = 0 ; i < N ; i++)
+            tmp3(i) = (double)tmp2[i];
+         X.col(j) = tmp3;
+      }
    }
    // impute by average
    else if(impute == IMPUTE_AVG)
    {
-      for(unsigned int i = 0 ; i < nsnps ; i++)
+      if(verbose)
+	 std::cout << "impute: IMPUTE_AVG" << std::endl;
+
+      for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
          in.read((char*)tmp, sizeof(char) * np);
@@ -146,36 +166,39 @@ void Data::read_bed(int impute)
          decode_plink(tmp2, tmp, np);
 
          // Compute average per SNP, excluding missing values
-         avg[i] = 0;
+         avg[j] = 0;
          unsigned int ngood = 0;
-         for(unsigned int j = 0 ; j < N ; j++)
+         for(unsigned int i = 0 ; i < N ; i++)
          {
-            double s = (double)tmp2[j];
+            double s = (double)tmp2[i];
             if(s != PLINK_NA)
             {
-               avg[i] += s;
+               avg[j] += s;
                ngood++;
             }
          }
-         avg[i] /= ngood;
+         avg[j] /= ngood;
 
          // Impute using average per SNP
-         for(unsigned int j = 0 ; j < N ; j++)
+         for(unsigned int i = 0 ; i < N ; i++)
          {
-            double s = (double)tmp2[j];
+            double s = (double)tmp2[i];
             if(s != PLINK_NA)
-               tmp3(j) = s;
+               tmp3(i) = s;
             else
-               tmp3(j) = avg[i];
+               tmp3(i) = avg[j];
          }
 
-         X.col(i) = tmp3;
+         X.col(j) = tmp3;
       }
    }
    // impute by sampling genotypes
-   else if(impute == IMPUTE_SAMPLE)
+   else if(impute == IMPUTE_RANDOM)
    {
-      for(unsigned int i = 0 ; i < nsnps ; i++)
+      if(verbose)
+	 std::cout << "impute: IMPUTE_RANDOM" << std::endl;
+
+      for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
          in.read((char*)tmp, sizeof(char) * np);
@@ -187,38 +210,50 @@ void Data::read_bed(int impute)
 	 unsigned int ngood = 0, sum0 = 0, sum1 = 0, sum2 = 0;
 	 char x;
 
-         for(unsigned int j = 0 ; j < N ; j++)
+	 // first pass to get genotype proportions
+         for(unsigned int i = 0 ; i < N ; i++)
 	 {
-	    x = tmp2[j];
-
+	    x = tmp2[i];
 	    if(x != PLINK_NA)
 	    {
 	       sum0 += (x == 0);
 	       sum1 += (x == 1);
 	       sum2 += (x == 2);
 	       ngood++;
+	       tmp3(i) = (double)x;
 	    }
 	 }
 
-	 proportions[0] = (double)sum0 / ngood;
-	 proportions[1] = (double)sum1 / ngood;
-	 proportions[2] = (double)sum2 / ngood;
-	 
-	 double cumsum[3] = {
-	    proportions[0],
-	    proportions[0] + proportions[1],
-	    1
-	 };
+	 if(ngood < N)
+	 {
+	    proportions[0] = (double)sum0 / ngood;
+	    proportions[1] = (double)sum1 / ngood;
+	    proportions[2] = (double)sum2 / ngood;
+	    
+	    double cumsum[3] = {
+	       proportions[0],
+	       proportions[0] + proportions[1],
+	       1
+	    };
 
-	 double r = drand48();
-	 if(r < cumsum[0])
-	    tmp3(j) = 0.0;
-	 else if(r < cumsum[1])
-	    tmp3(j) = 1.0;
-	 else
-	    tmp3(j) = 2.0;
+	    // second pass to sample the missing genotypes
+            for(unsigned int i = 0 ; i < N ; i++)
+	    {
+	       x = tmp2[i];
+	       if(x == PLINK_NA)
+	       {
+	          double r = drand48();
+	          if(r < cumsum[0])
+	             tmp3(i) = 0.0;
+	          else if(r < cumsum[1])
+	             tmp3(i) = 1.0;
+	          else
+	             tmp3(i) = 2.0;
+	       }
+	    }
+	 }
 
-         X.col(i) = tmp3;
+         X.col(j) = tmp3;
       }
    }
 

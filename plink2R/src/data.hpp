@@ -11,6 +11,10 @@
 #include <Eigen/SVD>
 #include <Eigen/Sparse>
 
+#define IMPUTE_NONE 0
+#define IMPUTE_AVG 1
+#define IMPUTE_RANDOM 2
+
 //#include <boost/filesystem.hpp>
 //#include <boost/iostreams/device/mapped_file.hpp>
 

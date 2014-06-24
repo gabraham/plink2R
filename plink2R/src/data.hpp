@@ -73,7 +73,7 @@ class Data {
       
       Data(const char* bedfile, const char* famfile, bool verbose);
       ~Data();
-      void read_bed(bool impute);
+      void read_bed(int impute);
       MatrixXd read_plink_pheno(const char *filename, unsigned int firstcol);
       void load_snp_double(unsigned int j, double *geno);
       VectorXd load_snp(unsigned int j);

@@ -8,6 +8,7 @@
 
 Data::Data(const char* bedfile, const char* famfile, bool verbose)
 {
+   srand48(time(NULL));
    N = 0;
    p = 0;
    K = 0;
@@ -93,7 +94,7 @@ void decode_plink(unsigned char *out,
 }
 
 // Expects PLINK BED in SNP-major format
-void Data::read_bed(bool impute)
+void Data::read_bed(int impute)
 {
    if(verbose)
       std::cout << ">>> Reading BED file '" << this->bedfile << "'" << std::endl;
@@ -130,8 +131,11 @@ void Data::read_bed(bool impute)
 
    double* avg = new double[nsnps]; 
 
+   if(impute == IMPUTE_NONE)
+   {
+   }
    // impute by average
-   if(impute == IMPUTE_AVG)
+   else if(impute == IMPUTE_AVG)
    {
       for(unsigned int i = 0 ; i < nsnps ; i++)
       {
@@ -179,11 +183,43 @@ void Data::read_bed(bool impute)
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
 
+	 double proportions[3];
+	 unsigned int ngood = 0, sum0 = 0, sum1 = 0, sum2 = 0;
+	 char x;
+
          for(unsigned int j = 0 ; j < N ; j++)
-	    tmp3(j) = (double)tmp2[j];
+	 {
+	    x = tmp2[j];
+
+	    if(x != PLINK_NA)
+	    {
+	       sum0 += (x == 0);
+	       sum1 += (x == 1);
+	       sum2 += (x == 2);
+	       ngood++;
+	    }
+	 }
+
+	 proportions[0] = (double)sum0 / ngood;
+	 proportions[1] = (double)sum1 / ngood;
+	 proportions[2] = (double)sum2 / ngood;
+	 
+	 double cumsum[3] = {
+	    proportions[0],
+	    proportions[0] + proportions[1],
+	    1
+	 };
+
+	 double r = drand48();
+	 if(r < cumsum[0])
+	    tmp3(j) = 0.0;
+	 else if(r < cumsum[1])
+	    tmp3(j) = 1.0;
+	 else
+	    tmp3(j) = 2.0;
+
          X.col(i) = tmp3;
       }
-
    }
 
    p = X.cols();

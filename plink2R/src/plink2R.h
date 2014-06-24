@@ -3,6 +3,10 @@
 
 #include <RcppEigen.h>
 
+#define IMPUTE_NONE 0
+#define IMPUTE_AVG 1
+#define IMPUTE_RANDOM 2
+
 using namespace Rcpp;
 using namespace Eigen;
 

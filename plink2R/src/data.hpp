@@ -11,6 +11,10 @@
 #include <Eigen/SVD>
 #include <Eigen/Sparse>
 
+#define IMPUTE_NONE 0
+#define IMPUTE_AVG 1
+#define IMPUTE_RANDOM 2
+
 //#include <boost/filesystem.hpp>
 //#include <boost/iostreams/device/mapped_file.hpp>
 
@@ -73,7 +77,7 @@ class Data {
       
       Data(const char* bedfile, const char* famfile, bool verbose);
       ~Data();
-      void read_bed(bool impute);
+      void read_bed(int impute);
       MatrixXd read_plink_pheno(const char *filename, unsigned int firstcol);
       void load_snp_double(unsigned int j, double *geno);
       VectorXd load_snp(unsigned int j);

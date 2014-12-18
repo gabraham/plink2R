@@ -8,6 +8,7 @@
 
 Data::Data(const char* bedfile, const char* famfile, bool verbose)
 {
+   srand48(time(NULL));
    N = 0;
    p = 0;
    K = 0;
@@ -21,16 +22,10 @@ Data::Data(const char* bedfile, const char* famfile, bool verbose)
 	 << " famfile: " << famfile << std::endl;
    this->Y = read_plink_pheno(famfile, 6);
    this->mask = VectorXd::Ones(N).array() == 1.0;
-   filesize = 0;
-
-   //mmap_bed(bedfile);
 }
 
 Data::~Data()
 {
-   //geno_fin.close();
-   if(filesize > 0)
-      munmap(data, filesize);
 }
 
 /* 
@@ -99,7 +94,7 @@ void decode_plink(unsigned char *out,
 }
 
 // Expects PLINK BED in SNP-major format
-void Data::read_bed(bool impute)
+void Data::read_bed(int impute)
 {
    if(verbose)
       std::cout << ">>> Reading BED file '" << this->bedfile << "'" << std::endl;
@@ -136,9 +131,33 @@ void Data::read_bed(bool impute)
 
    double* avg = new double[nsnps]; 
 
-   if(impute)
+   // The Rcpp code in read_plink will take care of converting PLINK_NA to
+   // NA_REAL
+   if(impute == IMPUTE_NONE)
    {
-      for(unsigned int i = 0 ; i < nsnps ; i++)
+      if(verbose)
+	 std::cout << "impute: IMPUTE_NONE" << std::endl;
+   
+      for(unsigned int j = 0 ; j < nsnps ; j++)
+      {
+         // read raw genotypes
+         in.read((char*)tmp, sizeof(char) * np);
+
+         // decode the genotypes
+         decode_plink(tmp2, tmp, np);
+
+         for(unsigned int i = 0 ; i < N ; i++)
+            tmp3(i) = (double)tmp2[i];
+         X.col(j) = tmp3;
+      }
+   }
+   // impute by average
+   else if(impute == IMPUTE_AVG)
+   {
+      if(verbose)
+	 std::cout << "impute: IMPUTE_AVG" << std::endl;
+
+      for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
          in.read((char*)tmp, sizeof(char) * np);
@@ -147,35 +166,39 @@ void Data::read_bed(bool impute)
          decode_plink(tmp2, tmp, np);
 
          // Compute average per SNP, excluding missing values
-         avg[i] = 0;
+         avg[j] = 0;
          unsigned int ngood = 0;
-         for(unsigned int j = 0 ; j < N ; j++)
+         for(unsigned int i = 0 ; i < N ; i++)
          {
-            double s = (double)tmp2[j];
+            double s = (double)tmp2[i];
             if(s != PLINK_NA)
             {
-               avg[i] += s;
+               avg[j] += s;
                ngood++;
             }
          }
-         avg[i] /= ngood;
+         avg[j] /= ngood;
 
          // Impute using average per SNP
-         for(unsigned int j = 0 ; j < N ; j++)
+         for(unsigned int i = 0 ; i < N ; i++)
          {
-            double s = (double)tmp2[j];
+            double s = (double)tmp2[i];
             if(s != PLINK_NA)
-               tmp3(j) = s;
+               tmp3(i) = s;
             else
-               tmp3(j) = avg[i];
+               tmp3(i) = avg[j];
          }
 
-         X.col(i) = tmp3;
+         X.col(j) = tmp3;
       }
    }
-   else
+   // impute by sampling genotypes
+   else if(impute == IMPUTE_RANDOM)
    {
-      for(unsigned int i = 0 ; i < nsnps ; i++)
+      if(verbose)
+	 std::cout << "impute: IMPUTE_RANDOM" << std::endl;
+
+      for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
          in.read((char*)tmp, sizeof(char) * np);
@@ -183,11 +206,55 @@ void Data::read_bed(bool impute)
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
 
-         for(unsigned int j = 0 ; j < N ; j++)
-	    tmp3(j) = (double)tmp2[j];
-         X.col(i) = tmp3;
-      }
+	 double proportions[3];
+	 unsigned int ngood = 0, sum0 = 0, sum1 = 0, sum2 = 0;
+	 char x;
 
+	 // first pass to get genotype proportions
+         for(unsigned int i = 0 ; i < N ; i++)
+	 {
+	    x = tmp2[i];
+	    if(x != PLINK_NA)
+	    {
+	       sum0 += (x == 0);
+	       sum1 += (x == 1);
+	       sum2 += (x == 2);
+	       ngood++;
+	       tmp3(i) = (double)x;
+	    }
+	 }
+
+	 if(ngood < N)
+	 {
+	    proportions[0] = (double)sum0 / ngood;
+	    proportions[1] = (double)sum1 / ngood;
+	    proportions[2] = (double)sum2 / ngood;
+	    
+	    double cumsum[3] = {
+	       proportions[0],
+	       proportions[0] + proportions[1],
+	       1
+	    };
+
+	    // second pass to sample the missing genotypes
+            for(unsigned int i = 0 ; i < N ; i++)
+	    {
+	       x = tmp2[i];
+	       if(x == PLINK_NA)
+	       {
+	          double r = drand48();
+	          if(r < cumsum[0])
+	             tmp3(i) = 0.0;
+	          else if(r < cumsum[1])
+	             tmp3(i) = 1.0;
+	          else
+	             tmp3(i) = 2.0;
+	       }
+	    }
+	 }
+
+         X.col(j) = tmp3;
+      }
    }
 
    p = X.cols();
@@ -270,44 +337,6 @@ std::string Data::tolower(const std::string& v)
    return r;
 }
 
-void Data::mmap_bed(const char *filename)
-{
-  // boost::iostreams::mapped_file_params params;
-   //params.path = std::string(filename, strlen(filename));
-   //params.offset = 0;
-   //params.length = -1;
-   //geno_fin = boost::iostreams::mapped_file_source(params);
-
-   geno_fin_fd = open(filename, O_RDONLY);
-   if(geno_fin_fd == -1)
-      throw std::runtime_error(
-	 "can't open file for reading");
-
-   struct stat64 stat_buf;
-   int rc = stat64(filename, &stat_buf);
-   filesize = stat_buf.st_size;
-
-   if(verbose)
-      std::cout << "filesize: " << filesize << std::endl;
-   len = filesize - PLINK_OFFSET;
-   data = (unsigned char*)mmap(NULL, filesize, PROT_READ, MAP_SHARED, geno_fin_fd, 0);
-
-   if(N == 0)
-      throw std::runtime_error(
-	 "haven't read a FAM/PHENO file so don't know what sample size is");
-
-   if(verbose)
-      std::cout << filename << " len: " << len << " bytes" << std::endl;
-   np = (unsigned int)ceil((double)N / PACK_DENSITY);
-   nsnps = (unsigned int)(len / np);
-
-   if(verbose)
-   {
-      std::cout << filename << " np: " << np << std::endl;
-      std::cout << filename << " nsnps: " << nsnps << std::endl;
-   }
-}
-
 // Assumes data is SNP-major ordered
 VectorXd Data::get_snp(unsigned int j)
 {
@@ -356,7 +385,7 @@ void Data::load_snp_double(unsigned int j, double *geno)
    // Compute standard dev over non-missing genotypes
    double mean = sum / ngood;
    double sum2 = 0, v;
-   for(i = N - 1 ; i != -1 ; --i)
+   for(i = 0 ; i < N ; i++)
    {
       v = geno[i];
       if(v != PLINK_NA)
@@ -369,13 +398,13 @@ void Data::load_snp_double(unsigned int j, double *geno)
 
    if(ngood == N)
    {
-      for(i = N - 1 ; i != -1 ; --i)
+      for(i = 0 ; i < N ; i++)
 	 geno[i] = (geno[i] - mean) / sd;
    }
    else
    {
       // Impute missing genotypes and standardise to zero-mean unit-variance
-      for(i = N - 1 ; i != -1 ; --i)
+      for(i = 0 ; i < N ; i++)
       {
          v = geno[i];
          if(v == PLINK_NA)

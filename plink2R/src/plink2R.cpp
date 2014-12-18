@@ -8,7 +8,7 @@ SEXP read_plink(SEXP _bedfile, SEXP _famfile,
 {
    std::string bedfile = as<std::string>(_bedfile);
    std::string famfile = as<std::string>(_famfile);
-   bool impute = as<bool>(_impute);
+   int impute = as<int>(_impute);
    bool verbose = as<bool>(_verbose);
 
    if(verbose)

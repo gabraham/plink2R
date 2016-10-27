@@ -1,8 +1,6 @@
 
 #include "data.hpp"
 
-#include <sys/stat.h>
-#include <sys/mman.h>
 #include <fcntl.h>
 #include <stdexcept>
 

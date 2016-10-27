@@ -83,7 +83,6 @@ class Data {
       VectorXd load_snp(unsigned int j);
 
       std::string tolower(const std::string& v);
-      void mmap_bed(const char *filename);
       VectorXd get_coordinate(unsigned int j);
       VectorXd get_snp(unsigned int j);
 };

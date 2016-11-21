@@ -8,8 +8,6 @@ Data::Data(const char* bedfile, const char* famfile, bool verbose)
 {
    srand48(time(NULL));
    N = 0;
-   p = 0;
-   K = 0;
    nsnps = 0;
    ncovar = 0;
    this->bedfile = bedfile;
@@ -254,8 +252,6 @@ void Data::read_bed(int impute)
          X.col(j) = tmp3;
       }
    }
-
-   p = X.cols();
 
    delete[] tmp;
    delete[] tmp2;

@@ -58,7 +58,7 @@ class Data {
       MatrixXd Xtrain, Xtest; // only used if data is small enough
       MatrixXd X2train, X2test;
       MatrixXd Ytrain, Ytest;
-      unsigned int N, p, K;
+      unsigned int N;
       unsigned long long len, filesize;
       unsigned int np, nsnps, ncovar;
       ArrayXb mask;

@@ -108,12 +108,12 @@ void Data::read_bed(int impute)
    in.seekg(0, std::ifstream::end);
 
    // file size in bytes, ignoring first 3 bytes (2byte magic number + 1byte mode)
-   len = (unsigned int)in.tellg() - 3;
+   len = (unsigned int)in.tellg() - PLINK_OFFSET;
 
    // size of packed data, in bytes, per SNP
    np = (unsigned int)ceil((double)N / PACK_DENSITY);
    nsnps = len / np;
-   in.seekg(3, std::ifstream::beg);
+   in.seekg(PLINK_OFFSET, std::ifstream::beg);
 
    unsigned char* tmp = new unsigned char[np];
 

@@ -125,8 +125,6 @@ void Data::read_bed(int impute)
       << " SNPs." << std::endl;
    VectorXd tmp3(N);
 
-   double* avg = new double[nsnps]; 
-
    // The Rcpp code in read_plink will take care of converting PLINK_NA to
    // NA_REAL
    if(impute == IMPUTE_NONE)
@@ -162,18 +160,18 @@ void Data::read_bed(int impute)
          decode_plink(tmp2, tmp, np);
 
          // Compute average per SNP, excluding missing values
-         avg[j] = 0;
+         double avg = 0;
          unsigned int ngood = 0;
          for(unsigned int i = 0 ; i < N ; i++)
          {
             double s = (double)tmp2[i];
             if(s != PLINK_NA)
             {
-               avg[j] += s;
+               avg += s;
                ngood++;
             }
          }
-         avg[j] /= ngood;
+         avg /= ngood;
 
          // Impute using average per SNP
          for(unsigned int i = 0 ; i < N ; i++)
@@ -182,7 +180,7 @@ void Data::read_bed(int impute)
             if(s != PLINK_NA)
                tmp3(i) = s;
             else
-               tmp3(i) = avg[j];
+               tmp3(i) = avg;
          }
 
          X.col(j) = tmp3;
@@ -255,7 +253,6 @@ void Data::read_bed(int impute)
 
    delete[] tmp;
    delete[] tmp2;
-   delete[] avg;
 
    in.close();
 }

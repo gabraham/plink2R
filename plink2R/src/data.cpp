@@ -1,9 +1,6 @@
 
 #include "data.hpp"
 
-#include <fcntl.h>
-#include <stdexcept>
-
 Data::Data(const char* bedfile, const char* famfile, bool verbose)
 {
    srand48(time(NULL));

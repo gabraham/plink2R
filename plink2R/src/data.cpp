@@ -9,7 +9,6 @@ Data::Data(const char* bedfile, const char* famfile, bool verbose)
    srand48(time(NULL));
    N = 0;
    nsnps = 0;
-   ncovar = 0;
    this->bedfile = bedfile;
    this->famfile = famfile;
    this->verbose = verbose;

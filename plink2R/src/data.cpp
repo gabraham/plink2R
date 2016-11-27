@@ -131,7 +131,7 @@ void Data::read_bed(int impute)
       for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
-         in.read((char*)tmp, sizeof(char) * np);
+         in.read((char*)tmp, np);
 
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
@@ -150,7 +150,7 @@ void Data::read_bed(int impute)
       for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
-         in.read((char*)tmp, sizeof(char) * np);
+         in.read((char*)tmp, np);
 
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
@@ -191,7 +191,7 @@ void Data::read_bed(int impute)
       for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
-         in.read((char*)tmp, sizeof(char) * np);
+         in.read((char*)tmp, np);
 
          // decode the genotypes
          decode_plink(tmp2, tmp, np);

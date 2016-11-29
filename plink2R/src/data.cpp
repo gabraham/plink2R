@@ -63,25 +63,25 @@ void decode_plink(unsigned char *out,
       geno = (tmp & MASK0);
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
       k++;
 
       geno = (tmp & MASK1) >> 2; 
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
       k++;
 
       geno = (tmp & MASK2) >> 4; 
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
       k++;
 
       geno = (tmp & MASK3) >> 6; 
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
    }
 }
 

@@ -1,17 +1,11 @@
 
 #include "data.hpp"
 
-#include <fcntl.h>
-#include <stdexcept>
-
 Data::Data(const char* bedfile, const char* famfile, bool verbose)
 {
    srand48(time(NULL));
    N = 0;
-   p = 0;
-   K = 0;
    nsnps = 0;
-   ncovar = 0;
    this->bedfile = bedfile;
    this->famfile = famfile;
    this->verbose = verbose;
@@ -69,25 +63,25 @@ void decode_plink(unsigned char *out,
       geno = (tmp & MASK0);
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
       k++;
 
       geno = (tmp & MASK1) >> 2; 
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
       k++;
 
       geno = (tmp & MASK2) >> 4; 
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
       k++;
 
       geno = (tmp & MASK3) >> 6; 
       a1 = !(geno & 1);
       a2 = !(geno >> 1);
-      out[k] = (geno == 1) ? 3 : a1 + a2;
+      out[k] = (geno == 1) ? PLINK_NA : a1 + a2;
    }
 }
 
@@ -108,12 +102,12 @@ void Data::read_bed(int impute)
    in.seekg(0, std::ifstream::end);
 
    // file size in bytes, ignoring first 3 bytes (2byte magic number + 1byte mode)
-   len = (unsigned int)in.tellg() - 3;
+   len = (unsigned int)in.tellg() - PLINK_OFFSET;
 
    // size of packed data, in bytes, per SNP
    np = (unsigned int)ceil((double)N / PACK_DENSITY);
    nsnps = len / np;
-   in.seekg(3, std::ifstream::beg);
+   in.seekg(PLINK_OFFSET, std::ifstream::beg);
 
    unsigned char* tmp = new unsigned char[np];
 
@@ -127,8 +121,6 @@ void Data::read_bed(int impute)
       << " SNPs." << std::endl;
    VectorXd tmp3(N);
 
-   double* avg = new double[nsnps]; 
-
    // The Rcpp code in read_plink will take care of converting PLINK_NA to
    // NA_REAL
    if(impute == IMPUTE_NONE)
@@ -139,7 +131,7 @@ void Data::read_bed(int impute)
       for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
-         in.read((char*)tmp, sizeof(char) * np);
+         in.read((char*)tmp, np);
 
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
@@ -158,24 +150,24 @@ void Data::read_bed(int impute)
       for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
-         in.read((char*)tmp, sizeof(char) * np);
+         in.read((char*)tmp, np);
 
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
 
          // Compute average per SNP, excluding missing values
-         avg[j] = 0;
+         double avg = 0;
          unsigned int ngood = 0;
          for(unsigned int i = 0 ; i < N ; i++)
          {
             double s = (double)tmp2[i];
             if(s != PLINK_NA)
             {
-               avg[j] += s;
+               avg += s;
                ngood++;
             }
          }
-         avg[j] /= ngood;
+         avg /= ngood;
 
          // Impute using average per SNP
          for(unsigned int i = 0 ; i < N ; i++)
@@ -184,7 +176,7 @@ void Data::read_bed(int impute)
             if(s != PLINK_NA)
                tmp3(i) = s;
             else
-               tmp3(i) = avg[j];
+               tmp3(i) = avg;
          }
 
          X.col(j) = tmp3;
@@ -199,7 +191,7 @@ void Data::read_bed(int impute)
       for(unsigned int j = 0 ; j < nsnps ; j++)
       {
          // read raw genotypes
-         in.read((char*)tmp, sizeof(char) * np);
+         in.read((char*)tmp, np);
 
          // decode the genotypes
          decode_plink(tmp2, tmp, np);
@@ -255,11 +247,8 @@ void Data::read_bed(int impute)
       }
    }
 
-   p = X.cols();
-
    delete[] tmp;
    delete[] tmp2;
-   delete[] avg;
 
    in.close();
 }
